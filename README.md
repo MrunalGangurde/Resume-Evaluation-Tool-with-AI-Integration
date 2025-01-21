@@ -1,4 +1,4 @@
-# README: Resume Evaluation Tool with AI Integration
+# Resume Evaluation Tool with AI Integration
 
 ## Overview
 The **Resume Evaluation Tool with AI Integration** is a Streamlit-based web application designed to help job seekers enhance their resumes. It leverages AI to evaluate resumes against specific job descriptions and provides actionable feedback to improve the chances of landing the desired job.
@@ -77,24 +77,11 @@ The following libraries are required to run the application:
 └── README.md              # Project documentation
 ```
 
----
-
 ## License
 This project is licensed under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
-### Terms
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:
-
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
-
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
-
----
-
 ## Contributing
 Contributions are welcome! Feel free to open issues or submit pull requests to improve the tool.
-
----
 
 ## Author
 [Mrunal Gangurde](https://github.com/MrunalGangurde)
