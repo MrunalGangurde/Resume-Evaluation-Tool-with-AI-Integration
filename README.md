@@ -68,12 +68,8 @@ The following libraries are required to run the application:
 ```
 .
 ├── app.py                 # Main application file
-├── src/
-│   ├── pdf_utils.py       # PDF text extraction utilities
-│   ├── prompt_builder.py  # Constructs prompts for AI
-│   ├── ai_utils.py        # Handles AI integration
-│   ├── response_parser.py # Parses and displays AI responses
 ├── requirements.txt       # Dependency list
+├── .env
 └── README.md              # Project documentation
 ```
 
