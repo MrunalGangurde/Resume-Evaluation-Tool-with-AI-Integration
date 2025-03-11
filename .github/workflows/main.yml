@@ -1,0 +1,39 @@
+name: Resume Evaluation Tool - CI/CD
+
+on:
+  push:
+    branches:
+      - main  # Runs on every push to main branch
+  pull_request:
+    branches:
+      - main  # Runs on every pull request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install spaCy Model
+        run: |
+          python -m spacy download en_core_web_sm  # 🛠️ Fix Missing Model
+
+      - name: Run Tests (Optional)
+        run: |
+          pytest tests/  # Replace with your test command
+
+      - name: Start Application
+        run: |
+          python app.py  # Modify based on your app’s startup command
