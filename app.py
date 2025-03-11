@@ -5,9 +5,15 @@ import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
 from textblob import TextBlob
 from src.pdf_utils import input_pdf_text
+import spacy
+import subprocess
 
-# Load Spacy Model
-nlp = spacy.load("en_core_web_sm")
+# Ensure the spaCy model is downloaded
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+    nlp = spacy.load("en_core_web_sm")
 
 # Streamlit UI
 st.title("🚀 AI Resume Evaluation - Free & Powerful")
