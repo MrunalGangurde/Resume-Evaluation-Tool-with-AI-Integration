@@ -2,3 +2,4 @@ streamlit
 spacy
 scikit-learn
 PyMuPDF
+textblob
