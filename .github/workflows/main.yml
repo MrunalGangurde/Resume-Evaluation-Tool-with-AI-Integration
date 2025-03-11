@@ -20,17 +20,19 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-          cache: 'pip'  # Cache dependencies
+          cache: 'pip'  # Caches dependencies
 
       - name: Install Dependencies
         run: |
-          set -e  # Exit on any error
-          python -m pip install --upgrade pip || exit 1
-          pip install -r requirements.txt || exit 1
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip list  # Check installed packages
 
-      - name: Install spaCy Model Manually
+      - name: Install spaCy Model (Alternative Fix)
         run: |
-          pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz
+          python -m spacy validate  # Validate spaCy installation
+          python -m pip install "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz"
+          python -m spacy validate  # Confirm model installation
 
       - name: Run Tests
         run: |
