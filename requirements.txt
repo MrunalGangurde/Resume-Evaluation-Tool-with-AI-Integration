@@ -4,3 +4,4 @@ scikit-learn
 PyMuPDF
 textblob
 PyPDF2 
+en-core-web-sm
