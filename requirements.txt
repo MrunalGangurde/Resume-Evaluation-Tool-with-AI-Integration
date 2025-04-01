@@ -1,8 +1,8 @@
 streamlit
-spacy
 requests
 pdfplumber
 ollama
 tenacity
 scikit-learn
-en_core_web_md 
+transformers
+torch
