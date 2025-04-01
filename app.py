@@ -13,10 +13,10 @@ import sys
 
 # Ensure spaCy model is available
 try:
-    nlp = spacy.load("en_core_web_sm")
+    nlp = spacy.load("en_core_web_trf")  # Using transformer-based model
 except OSError:
-    subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load("en_core_web_sm")
+    subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_trf"])
+    nlp = spacy.load("en_core_web_trf")
 
 # Streamlit UI Setup
 st.set_page_config(page_title="hiremedamnit", page_icon="🚀")
