@@ -5,3 +5,4 @@ pdfplumber
 ollama
 tenacity
 scikit-learn
+en_core_web_sm
