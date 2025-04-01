@@ -1,8 +1,8 @@
 streamlit
-spacy==3.1.1
+spacy
 requests
 pdfplumber
 ollama
 tenacity
 scikit-learn
-en_core_web_trf
+en_core_web_md 
