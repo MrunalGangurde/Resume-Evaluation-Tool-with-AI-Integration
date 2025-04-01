@@ -2,98 +2,128 @@ import os
 import json
 import streamlit as st
 import spacy
-from sklearn.feature_extraction.text import TfidfVectorizer
-from textblob import TextBlob
-from src.pdf_utils import input_pdf_text
-import spacy
+import requests
+import pdfplumber
 import subprocess
+import ollama
+from tenacity import retry, stop_after_attempt, wait_fixed
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-# Ensure the spaCy model is downloaded
 try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
     subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
     nlp = spacy.load("en_core_web_sm")
 
-# Streamlit UI
-st.title("🚀 AI Resume Evaluation - Free & Powerful")
-st.write("Upload your resume and enter a job description to get evaluation feedback, AI-powered suggestions, and job matches.")
+# Streamlit UI Setup
+st.set_page_config(page_title="hiremedamnit", page_icon="🚀")
+st.sidebar.title("Job Portal Filters")
+portal_options = st.sidebar.multiselect("Select Job Portals", ["QuickJSearch", "Jooble", "Adzuna"], default=["QuickJSearch", "Jooble", "Adzuna"])
+st.title("hiremedamnit - AI Resume Evaluation")
+
+# Job Filters
+remote_only = st.sidebar.checkbox("Remote Only")
+salary_range = st.sidebar.slider("Salary Range ($)", 30000, 200000, (50000, 100000))
+experience_level = st.sidebar.selectbox("Experience Level", ["Entry", "Mid", "Senior"])
+
+st.write("Upload your resume and enter a job description to get AI-powered suggestions and job matches.")
 
 # File Upload
 uploaded_file = st.file_uploader("📄 Upload your Resume (PDF only)", type="pdf")
 jd = st.text_area("📝 Enter the Job Description (max 500 words)", max_chars=2500)
 
-# Function to extract keywords
-def extract_keywords(text, top_n=10):
-    doc = nlp(text)
-    words = [token.lemma_ for token in doc if token.is_alpha and not token.is_stop]
-    return list(set(words))[:top_n]  # Return unique top words
+# Extract text from PDF
+def input_pdf_text(uploaded_file):
+    try:
+        with pdfplumber.open(uploaded_file) as pdf:
+            text = "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
+        return text if text.strip() else None
+    except Exception as e:
+        st.error(f"Error reading PDF: {str(e)}")
+        return None
 
-# Function to improve resume action words
-def enhance_action_words(text):
-    doc = nlp(text)
-    improved_text = " "
-    for token in doc:
-        if token.pos_ == "VERB":
-            improved_text += TextBlob(token.text).correct() + " "
-        else:
-            improved_text += token.text + " "
-    return improved_text.strip()
-
-# Function to compare resume and job description
+# TF-IDF Matching
 def match_resume_with_jd(resume_text, job_desc):
-    resume_keywords = extract_keywords(resume_text)
-    jd_keywords = extract_keywords(job_desc)
+    vectorizer = TfidfVectorizer(stop_words="english")
+    tfidf_matrix = vectorizer.fit_transform([resume_text, job_desc])
+    score = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0] * 100
+    return round(score, 2)
+
+# Generate AI Cover Letter using Local LLaMA/Mistral Model
+def generate_cover_letter(name, job_title, company, resume_summary):
+    prompt = f"""
+    Write a professional cover letter for {name} applying for the {job_title} position at {company}.
+    Use the following resume summary:
+    "{resume_summary}"
+    The tone should be engaging and professional.
+    """
+    response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
+    return response['message']['content']
+
+# Job Fetching with Retry Mechanism
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+def fetch_jobs_from_apis(query, location="USA"):
+    jobs = []
+    headers = {'Content-Type': 'application/json'}
     
-    missing_skills = set(jd_keywords) - set(resume_keywords)
-    score = len(set(resume_keywords) & set(jd_keywords)) / len(jd_keywords) * 100
-    return score, missing_skills
-
-# Function to generate a resume summary
-def generate_summary(resume_text):
-    doc = nlp(resume_text)
-    sentences = [sent.text for sent in doc.sents]
-    return " ".join(sentences[:3])  # Return first 3 sentences as summary
-
-# Function to generate a basic AI cover letter
-def generate_cover_letter(name, job_title, company):
-    return f"""Dear Hiring Manager,
-
-I am excited to apply for the {job_title} position at {company}. With my skills and experience, I am confident that I can contribute significantly to your team. My background in [your_field] has equipped me with the necessary expertise to excel in this role.
-
-I welcome the opportunity to discuss how my qualifications align with your needs.
-
-Best Regards,
-{name}
-"""
+    if "QuickJSearch" in portal_options:
+        quickjsearch_url = f"https://api.quickjsearch.com/jobs?query={query}&location={location}"
+        response = requests.get(quickjsearch_url)
+        if response.status_code == 200:
+            jobs.extend(response.json().get("results", []))
+    
+    if "Jooble" in portal_options:
+        jooble_url = "https://jooble.org/api/YOUR_JOOBLE_API_KEY"
+        payload = json.dumps({"keywords": query, "location": location})
+        response = requests.post(jooble_url, headers=headers, data=payload)
+        if response.status_code == 200:
+            jobs.extend(response.json().get("jobs", []))
+    
+    if "Adzuna" in portal_options:
+        adzuna_url = f"https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=YOUR_ADZUNA_APP_ID&app_key=YOUR_ADZUNA_APP_KEY&what={query}&where={location}"
+        response = requests.get(adzuna_url)
+        if response.status_code == 200:
+            jobs.extend(response.json().get("results", []))
+    
+    return jobs
 
 # Evaluate Button
 if st.button("🚀 Evaluate My Resume"):
     if uploaded_file and jd.strip():
         resume_text = input_pdf_text(uploaded_file)
         if resume_text:
-            score, missing_skills = match_resume_with_jd(resume_text, jd)
-            enhanced_text = enhance_action_words(resume_text)
-            summary = generate_summary(resume_text)
+            with st.spinner("Analyzing your resume..."):
+                score = match_resume_with_jd(resume_text, jd)
+                summary = " ".join(resume_text.split(". ")[:3])  # Simple Summary Extraction
+                cover_letter = generate_cover_letter("Your Name", "Job Title", "Company Name", summary)
             
             # Display Results
             st.subheader("✅ Evaluation Results")
             st.write(f"**Resume Match Score:** {score:.2f}%")
-            st.write("🔴 **Missing Skills:**", ", ".join(missing_skills) if missing_skills else "None")
-            
-            st.subheader("💡 Enhanced Resume Suggestions")
-            st.write(enhanced_text)
             
             st.subheader("📜 AI-Generated Resume Summary")
             st.write(summary)
             
-            # Sample Cover Letter
             st.subheader("✉️ AI-Generated Cover Letter")
-            st.text_area("Your AI-generated cover letter:", generate_cover_letter("Your Name", "Job Title", "Company Name"), height=200)
+            st.text_area("Your AI-generated cover letter:", cover_letter, height=200)
             
-            # Future Feature: Job Portal Integration (Commented for Now)
-            # st.subheader("🌍 Job Match Across Portals")
-            # st.write("🚀 Soon, you will be able to upload your resume and our AI will find the best job matches from Indeed, LinkedIn, and more!")
+            # Job Matching Feature
+            st.subheader("🌍 Job Matches from Portals")
+            jobs = fetch_jobs_from_apis(jd)
+            if jobs:
+                for job in jobs[:5]:  # Show top 5 job results
+                    if remote_only and "remote" not in job.get("title", "").lower():
+                        continue
+                    if "salary" in job and not (salary_range[0] <= job["salary"] <= salary_range[1]):
+                        continue
+                    if experience_level.lower() not in job.get("title", "").lower():
+                        continue
+                    
+                    st.write(f"**{job.get('title', 'No Title')}** - {job.get('company', 'Unknown Company')} ({job.get('location', 'Unknown Location')})")
+                    st.write(f"🔗 [Apply Here]({job.get('url', '#')})")
+            else:
+                st.warning("⚠️ No jobs found. Try refining your search query.")
         else:
             st.error("⚠️ Could not extract text from PDF.")
     else:
