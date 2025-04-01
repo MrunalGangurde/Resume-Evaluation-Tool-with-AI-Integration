@@ -1,22 +1,17 @@
 import os
 import json
 import streamlit as st
-import spacy
 import requests
 import pdfplumber
-import subprocess
-import ollama
+import torch
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from tenacity import retry, stop_after_attempt, wait_fixed
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import sys
 
-# Ensure spaCy model is available
-try:
-    nlp = spacy.load("en_core_web_trf")  # Using transformer-based model
-except OSError:
-    subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_trf"])
-    nlp = spacy.load("en_core_web_trf")
+# Load Hugging Face's GPT-2 Model and Tokenizer
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+model = GPT2LMHeadModel.from_pretrained("gpt2")
 
 # Streamlit UI Setup
 st.set_page_config(page_title="hiremedamnit", page_icon="🚀")
@@ -52,7 +47,7 @@ def match_resume_with_jd(resume_text, job_desc):
     score = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0] * 100
     return round(score, 2)
 
-# Generate AI Cover Letter using Local LLaMA/Mistral Model
+# Generate AI Cover Letter using Hugging Face's GPT-2
 def generate_cover_letter(name, job_title, company, resume_summary):
     prompt = f"""
     Write a professional cover letter for {name} applying for the {job_title} position at {company}.
@@ -60,8 +55,10 @@ def generate_cover_letter(name, job_title, company, resume_summary):
     "{resume_summary}"
     The tone should be engaging and professional.
     """
-    response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
-    return response['message']['content']
+    inputs = tokenizer(prompt, return_tensors="pt")
+    outputs = model.generate(inputs["input_ids"], max_length=250, num_return_sequences=1)
+    cover_letter = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return cover_letter
 
 # Job Fetching with Retry Mechanism
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
